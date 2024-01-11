@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bpwave"
+authors = [
+    {name = "Répai Attila", email = "repai.attila@hallgato.ppke.hu"}
+]
+description = "Blood pressure waveform processing toolbox"
+requires-python = ">=3.10"
+dependencies = [
+    "h5py",
+    "matplotlib",
+    "numpy",
+]
+dynamic = ["version", "readme"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/repat8/bpwave"
+Issues = "https://github.com/repat8/bpwave/issues"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "black[jupyter]",
+    "flake8",
+    "isort",
+    "mypy",
+]
+tests = [
+    "pytest",
+    "pytest-cov",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme >= 1",
+]
+
+[tool.setuptools]
+packages = ["bpwave"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "bpwave._version.__version__"}
+readme = {file = ["README.rst", "CHANGELOG.rst"]}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--import-mode=importlib",
+]
+markers = [
+    "human: needs a human to verify the output (like plotting)",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.mypy]
+namespace_packages = true
+explicit_package_bases = true
+exclude = [
+    "^build/*",
+    "^docs/*",
+]
