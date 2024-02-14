@@ -1,0 +1,13 @@
+Schumann, A., & Bär, K. (2021).
+Autonomic Aging: A dataset to quantify changes of cardiovascular autonomic
+function during healthy aging (version 1.0.0). PhysioNet.
+https://doi.org/10.13026/2hsy-t491.
+
+Goldberger, A., Amaral, L., Glass, L., Hausdorff, J., Ivanov, P. C., Mark, R., ... & Stanley, H. E. (2000).
+PhysioBank, PhysioToolkit, and PhysioNet: Components of a new research resource for complex physiologic signals.
+Circulation [Online]. 101 (23), pp. e215–e220.
+
+https://www.physionet.org/content/autonomic-aging-cardiovascular/1.0.0/0027.dat
+
+First 10000 data points.
+Characteristic points: annotation by the authors of bpwave package.

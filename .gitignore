@@ -1,0 +1,13 @@
+/.idea/
+/build/
+/dist/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+/docs/build/
+/tests/out/
+/examples/out/
+.mypy_cache/
+.coverage
+htmlcov/
