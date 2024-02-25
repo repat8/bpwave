@@ -172,6 +172,13 @@ def test__signal__y__setter(simple_signal: Signal) -> None:
         simple_signal.y = new_values[1:]
 
 
+def test__signal__y__mypy(simple_signal: Signal) -> None:
+    simple_signal.y = np.array(simple_signal.y)
+    simple_signal.y = simple_signal.y.tolist()
+    simple_signal.copy(y=np.array(simple_signal.y))
+    simple_signal.copy(y=simple_signal.y.tolist())
+
+
 def test__signal__features__validation() -> None:
     y = [0, 1, 2, 1, 0, 1, 2, 1, 0]
     s = Signal(

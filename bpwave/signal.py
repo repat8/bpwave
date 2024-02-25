@@ -239,7 +239,7 @@ class Signal:
         return self._y
 
     @y.setter
-    def y(self, v: _ca.Sequence) -> None:
+    def y(self, v: _ca.Iterable) -> None:
         new_y = _np.asarray(v, dtype=float)
         if len(new_y) != len(self._y):
             raise ValueError(f"New `y` must not change length ({len(self._y)})")
@@ -403,7 +403,7 @@ class Signal:
 
     def copy(
         self,
-        y: _ca.Sequence | None = None,
+        y: _ca.Iterable | None = None,
         unit: str | None = None,
         label: str | None = None,
         chpoints: ChPoints | None = None,
@@ -415,7 +415,7 @@ class Signal:
         Fields passed as arguments will be replaced.
         """
         return type(self)(
-            y=(self.y.copy() if y is None else y),  # type: ignore
+            y=(self.y.copy() if y is None else y),
             unit=self.unit if unit is None else unit,
             t=None if self._t is None else self._t.copy(),
             fs=None if self._t is not None else self._fs,
