@@ -1,4 +1,8 @@
 0.0.2 (2024--)
+    Breaking changes:
+
+    * ``Signal.copy``: arguments made keyword-only
+
     Features:
 
     * ``CpIndices.NAMES``

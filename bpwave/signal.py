@@ -23,7 +23,7 @@ class CpIndices:
     Fields are optional; missing entries get negative value.
     """
 
-    NAMES: _t.ClassVar[tuple[str]] = (
+    NAMES: _t.ClassVar[tuple[str, str, str, str, str, str]] = (
         "onset",
         "sys_peak",
         "refl_onset",
@@ -417,6 +417,7 @@ class Signal:
 
     def copy(
         self,
+        *,
         y: _ca.Iterable | None = None,
         unit: str | None = None,
         label: str | None = None,
