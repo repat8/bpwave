@@ -23,6 +23,16 @@ class CpIndices:
     Fields are optional; missing entries get negative value.
     """
 
+    NAMES: _t.ClassVar[tuple[str]] = (
+        "onset",
+        "sys_peak",
+        "refl_onset",
+        "refl_peak",
+        "dicr_notch",
+        "dicr_peak",
+    )
+    """Index names in the same order as values in :meth:`to_array`."""
+
     onset: int = -1
     """Onset."""
 

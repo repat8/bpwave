@@ -1,4 +1,8 @@
 0.0.2 (2024--)
+    Features:
+
+    * ``CpIndices.NAMES``
+
     Fixes:
 
     * Error message in ``Signal.chpoints`` setter.

@@ -1,3 +1,5 @@
+import dataclasses
+
 import h5py  # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,6 +51,10 @@ def simple_signal() -> Signal:
         marks={"a": [1]},
         meta={"source": "test"},
     )
+
+
+def test__cpindices__names() -> None:
+    assert CpIndices.NAMES == tuple(f.name for f in dataclasses.fields(CpIndices))
 
 
 def test__cpindices__empty() -> None:
