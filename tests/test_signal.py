@@ -179,6 +179,20 @@ def test__signal__y__mypy(simple_signal: Signal) -> None:
     simple_signal.copy(y=simple_signal.y.tolist())
 
 
+def test__signal__val_1d(simple_signal: Signal) -> None:
+    scalar = np.median([[1, 2], [1, 2]])  # Intentionally no axis
+    with pytest.raises(ValueError):
+        Signal(y=scalar, fs=1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        Signal(y=scalar, t=scalar)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        simple_signal.y = 1  # type: ignore[assignment]
+    with pytest.raises(ValueError):
+        simple_signal.copy(y=scalar)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        simple_signal.marks = {"test": scalar}  # type: ignore[assignment]
+
+
 def test__signal__features__validation() -> None:
     y = [0, 1, 2, 1, 0, 1, 2, 1, 0]
     s = Signal(

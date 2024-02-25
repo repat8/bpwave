@@ -110,6 +110,7 @@ class _MarksProxy(_col.UserDict):
 
     def __setitem__(self, key: str, value: _ca.Iterable[int]) -> None:
         indices = _np.asarray(value, int)
+        _validate_1d(indices, "value")
         if ((indices < 0) | (indices >= self._stop)).any():
             raise ValueError(f"`{key}` must be valid nonnegative indices of `y`")
         super().__setitem__(key, indices)
@@ -203,10 +204,12 @@ class Signal:
         self.label = label  #: Name of the signal (e. g. for plot label).
 
         self._y = _np.asarray(y, dtype=float)
+        _validate_1d(self._y, "y")
         self._t: _npt.NDArray[_np.float64] | None = None
 
         if t is not None:
             self._t = _np.asarray(t, dtype=float)
+            _validate_1d(self._t, "t")
             self._validate_timestamps()
             self._fs = 1.0 / _np.diff(self._t).mean()
             self._t_from_fs = False
@@ -239,11 +242,12 @@ class Signal:
         return self._y
 
     @y.setter
-    def y(self, v: _ca.Iterable) -> None:
-        new_y = _np.asarray(v, dtype=float)
-        if len(new_y) != len(self._y):
+    def y(self, new_y: _ca.Iterable) -> None:
+        new_ya = _np.asarray(new_y, dtype=float)
+        _validate_1d(new_ya, "new_y")
+        if len(new_ya) != len(self._y):
             raise ValueError(f"New `y` must not change length ({len(self._y)})")
-        self._y = new_y
+        self._y = new_ya
 
     @property
     def t(self) -> _npt.NDArray[_np.float64]:
@@ -691,3 +695,8 @@ class Signal:
             raise ValueError(
                 f"Timestamps are not monotone increasing at indices {back.tolist()}"
             )
+
+
+def _validate_1d(a: _t.Any, name: str) -> None:
+    if (d := _np.ndim(a)) != 1:
+        raise ValueError(f"`{name}` must be 1D, got {d}D")
