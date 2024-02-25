@@ -290,7 +290,7 @@ class Signal:
             curr_i_max = i_max if i == n_ccycles - 1 else s.indices[i + 1].onset - 1
             for pname, value in ci.without_unset().items():
                 if not ((0 if pname == "onset" else ci.onset) <= value <= curr_i_max):
-                    raise ValueError(f"points[{i}].{pname}={value} is out of range")
+                    raise ValueError(f"indices[{i}].{pname}={value} is out of range")
         self._chpoints = _dc.replace(
             s, indices=sorted(s.indices, key=lambda e: e.onset)
         )
