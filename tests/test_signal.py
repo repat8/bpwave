@@ -422,4 +422,5 @@ def test__signal__hdf__t_from_fs_has_segmentation(simple_signal):
     assert s_loaded.t_from_fs
     assert s_loaded.chpoints == simple_signal.chpoints
     assert s_loaded.marks == simple_signal.marks
+    assert s_loaded.slices == simple_signal.slices
     assert s_loaded.meta == simple_signal.meta

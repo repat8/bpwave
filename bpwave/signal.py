@@ -701,6 +701,11 @@ class Signal:
             for name, indices in self.marks.items():
                 marks_gr.create_dataset(name, data=indices)
 
+        if self.slices:
+            slices_gr = group.create_group("slices")
+            for name, slices in self.slices.items():
+                slices_gr.create_dataset(name, data=[[s.start, s.stop] for s in slices])
+
         if self.meta:
             meta_gr = group.create_group("meta")
             for name, value in self.meta.items():
@@ -746,6 +751,14 @@ class Signal:
             marks=(
                 {name: indices for name, indices in g.items()}
                 if (g := group.get("marks"))
+                else None
+            ),
+            slices=(
+                {
+                    name: [slice(start, stop) for start, stop in slices]
+                    for name, slices in g.items()
+                }
+                if (g := group.get("slices"))
                 else None
             ),
             meta=(
