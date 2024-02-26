@@ -126,6 +126,33 @@ class _MarksProxy(_col.UserDict):
         super().__setitem__(key, indices)
 
 
+_SlicesInput: _t.TypeAlias = _t.Union[dict[str, _ca.Sequence[slice]], "_SlicesProxy"]
+
+
+class _SlicesProxy(_col.UserDict):
+    def __init__(
+        self,
+        slices: _SlicesInput,
+        stop: int,
+    ):
+        self._stop = stop
+        super().__init__(slices)
+
+    def __setitem__(self, key: str, value: _ca.Sequence[slice]) -> None:
+        for i, slc in enumerate(value):
+            if slc.step is not None:
+                warnings.warn(f"Handling `step` is not implemented (value[{i}])")
+            if slc.start < 0 or slc.start >= self._stop:
+                raise ValueError(
+                    f"`value[{i}].start must be valid nonnegative index of `y`"
+                )
+            if slc.stop < 0 or slc.stop > self._stop:
+                raise ValueError(
+                    f"`value[{i}].stop must be valid nonnegative index of `y`"
+                )
+        super().__setitem__(key, list(value))
+
+
 class _CCyclesIndexer:
     def __init__(self, signal: "Signal"):
         self._signal = signal
@@ -177,6 +204,7 @@ class Signal:
         label: str | None = None,
         chpoints: ChPoints | None = None,
         marks: dict[str, _ca.Iterable[int]] | _MarksProxy | None = None,
+        slices: _SlicesInput | None = None,
         meta: dict[str, _t.Any] | None = None,
     ):
         """Creates a signal defined by data points and timestamps or sampling frequency.
@@ -194,6 +222,8 @@ class Signal:
             Optional, identical to setting  :attr:`chpoints`.
         :param marks: named indices.
             Optional, identical to setting  :attr:`marks`.
+        :param slices: named slice sequences.
+            Optional, identical to setting :attr:`slices`.
         :param meta: key-value metadata.
             Optional, identical to setting  :attr:`meta`.
 
@@ -233,7 +263,10 @@ class Signal:
         self.chpoints = chpoints
 
         self._marks = _MarksProxy({}, len(self._y))
-        self.marks = marks  # type: ignore
+        self.marks = marks  # type: ignore[assignment]
+
+        self._slices = _SlicesProxy({}, len(self._y))
+        self.slices = slices  # type: ignore[assignment]
 
         #: Key-value metadata (value can be anything accepted by
         #: :attr:`h5py.Group.attrs`.
@@ -341,6 +374,26 @@ class Signal:
     def marks(self, m: dict[str, _ca.Iterable[int]] | _MarksProxy | None):
         self._marks = _MarksProxy(m or {}, len(self._y))
 
+    @property
+    def slices(self) -> _SlicesProxy:
+        """Named slice lists e. g. to mark sections of the measurement.
+
+        Index range is validated on assignments like::
+
+            signal.slices = {'hand_movement': [np.s_[100:600]]}
+            signal.slices['hand_movement'] = [slice(100, 200)]
+
+        ``step`` is not supported in slices.
+
+        :returns: an object behaving exactly like a ``dict[str, list[slice]]``.
+        :raises ValueError: when a ``start`` or ``stop`` is out of range.
+        """
+        return self._slices
+
+    @slices.setter
+    def slices(self, v: _SlicesInput | None):
+        self._slices = _SlicesProxy(v or {}, len(self._y))
+
     def __getitem__(self, slc: slice) -> "Signal":
         """Creates a **view** of a section of the signal.
 
@@ -403,6 +456,16 @@ class Signal:
                 name: v[(v >= start) & (v < stop)] - start
                 for name, v in self.marks.items()
             },
+            slices={
+                name: [
+                    slice(
+                        max(0, slc.start - start), min(slc.stop - start, stop - start)
+                    )
+                    for slc in slcs
+                    if start <= slc.start < stop or start <= slc.stop <= stop
+                ]
+                for name, slcs in self.slices.items()
+            },
             meta=self.meta,
         )
         section._fs = self._fs
@@ -423,6 +486,7 @@ class Signal:
         label: str | None = None,
         chpoints: ChPoints | None = None,
         marks: dict[str, _ca.Iterable[int]] | None = None,
+        slices: _SlicesInput | None = None,
         meta: dict[str, _t.Any] | None = None,
     ) -> "Signal":
         """Creates a copy of the signal (all :mod:`numpy` arrays are copied).
@@ -437,6 +501,7 @@ class Signal:
             label=self.label if label is None else label,
             chpoints=(_cp.deepcopy(self.chpoints) if chpoints is None else chpoints),
             marks=(_cp.deepcopy(self.marks.data) if marks is None else marks),
+            slices=(_cp.deepcopy(self._slices.data) if slices is None else slices),
             meta=((self.meta and _cp.deepcopy(self.meta)) if meta is None else meta),
         )
 

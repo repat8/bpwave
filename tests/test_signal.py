@@ -49,6 +49,7 @@ def simple_signal() -> Signal:
         ),
         label="Simple signal",
         marks={"a": [1]},
+        slices={"a": [np.s_[2:4]]},
         meta={"source": "test"},
     )
 
@@ -239,6 +240,18 @@ def test__signal__marks(simple_signal: Signal) -> None:
         simple_signal.marks["b"] = [100]
 
 
+def test__signal__slices(simple_signal: Signal) -> None:
+    n = len(simple_signal.y)
+    simple_signal.slices["x"] = [np.s_[1 : n - 1]]
+    assert simple_signal.slices["x"] == [np.s_[1 : n - 1]]
+    simple_signal.slices = {"y": [np.s_[2:n]]}  # type: ignore[assignment]
+    assert simple_signal.slices["y"] == [np.s_[2:n]]
+    with pytest.raises(ValueError):
+        simple_signal.slices = {"b": [np.s_[0 : n + 1]]}  # type: ignore[assignment]
+    with pytest.raises(ValueError):
+        simple_signal.slices["b"] = [np.s_[-10:n]]
+
+
 def test__signal__getitem(simple_signal: Signal) -> None:
     s2 = simple_signal[1:-3]
     assert s2.y.base is simple_signal.y
@@ -256,6 +269,7 @@ def test__signal__getitem(simple_signal: Signal) -> None:
         ],
     )
     assert s2.marks == {"a": [0]}
+    assert s2.slices == {"a": [slice(1, 3)]}
     assert s2.meta == simple_signal.meta
 
 
@@ -308,6 +322,8 @@ def test__signal__copy(simple_signal: Signal) -> None:
     assert s2.chpoints.indices[0] is not simple_signal.chpoints.indices[0]
     assert s2.marks == simple_signal.marks
     assert s2.marks is not simple_signal.marks
+    assert s2.slices == simple_signal.slices
+    assert s2.slices is not simple_signal.slices
     assert s2.meta == simple_signal.meta
     assert s2.meta is not simple_signal.meta
 

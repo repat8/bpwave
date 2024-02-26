@@ -6,6 +6,7 @@
     Features:
 
     * ``CpIndices.NAMES``
+    * New attribute ``Signal.slices``
 
     Fixes:
 
