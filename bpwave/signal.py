@@ -23,6 +23,16 @@ class CpIndices:
     Fields are optional; missing entries get negative value.
     """
 
+    NAMES: _t.ClassVar[tuple[str, str, str, str, str, str]] = (
+        "onset",
+        "sys_peak",
+        "refl_onset",
+        "refl_peak",
+        "dicr_notch",
+        "dicr_peak",
+    )
+    """Index names in the same order as values in :meth:`to_array`."""
+
     onset: int = -1
     """Onset."""
 
@@ -110,15 +120,45 @@ class _MarksProxy(_col.UserDict):
 
     def __setitem__(self, key: str, value: _ca.Iterable[int]) -> None:
         indices = _np.asarray(value, int)
+        _validate_1d(indices, "value")
         if ((indices < 0) | (indices >= self._stop)).any():
             raise ValueError(f"`{key}` must be valid nonnegative indices of `y`")
         super().__setitem__(key, indices)
 
 
-class _CCyclesIndexer:
+_SlicesInput: _t.TypeAlias = _t.Union[dict[str, _ca.Sequence[slice]], "_SlicesProxy"]
+
+
+class _SlicesProxy(_col.UserDict):
+    def __init__(
+        self,
+        slices: _SlicesInput,
+        stop: int,
+    ):
+        self._stop = stop
+        super().__init__(slices)
+
+    def __setitem__(self, key: str, value: _ca.Sequence[slice]) -> None:
+        for i, slc in enumerate(value):
+            if slc.step is not None:
+                warnings.warn(f"Handling `step` is not implemented (value[{i}])")
+            if slc.start < 0 or slc.start >= self._stop:
+                raise ValueError(
+                    f"`value[{i}].start must be valid nonnegative index of `y`"
+                )
+            if slc.stop < 0 or slc.stop > self._stop:
+                raise ValueError(
+                    f"`value[{i}].stop must be valid nonnegative index of `y`"
+                )
+        super().__setitem__(key, list(value))
+
+
+class _SignalIndexer:
     def __init__(self, signal: "Signal"):
         self._signal = signal
 
+
+class _CCyclesIndexer(_SignalIndexer):
     @_t.overload
     def __getitem__(self, item: int) -> "Signal":
         ...
@@ -134,6 +174,34 @@ class _CCyclesIndexer:
                 return self._signal[slices[item]]
             case slice():
                 return [self._signal[s] for s in slices[item]]
+
+
+class _ByTIndexer(_SignalIndexer):
+    def __getitem__(self, item: slice) -> "Signal":
+        match item:
+            case slice(start=start, stop=stop, step=None):
+                if start is not None:
+                    start = self._signal.t2i(start)
+                if stop is not None:
+                    stop = self._signal.t2i(stop)
+                return self._signal[start:stop]
+            case _:
+                raise ValueError(f"Unsupported time-based slice {item}")
+
+
+class _InclusiveByOnsetIndexer(_SignalIndexer):
+    def __getitem__(self, item: slice) -> "Signal":
+        match item:
+            case slice(start=start, stop=stop, step=None):
+                if start is None:
+                    start = 0
+                if stop is None:
+                    stop = -1
+                return self._signal[
+                    self._signal.onsets[start] : self._signal.onsets[stop] + 1
+                ]
+            case _:
+                raise ValueError(f"Unsupported onset slice {item}")
 
 
 class Signal:
@@ -166,6 +234,7 @@ class Signal:
         label: str | None = None,
         chpoints: ChPoints | None = None,
         marks: dict[str, _ca.Iterable[int]] | _MarksProxy | None = None,
+        slices: _SlicesInput | None = None,
         meta: dict[str, _t.Any] | None = None,
     ):
         """Creates a signal defined by data points and timestamps or sampling frequency.
@@ -183,6 +252,8 @@ class Signal:
             Optional, identical to setting  :attr:`chpoints`.
         :param marks: named indices.
             Optional, identical to setting  :attr:`marks`.
+        :param slices: named slice sequences.
+            Optional, identical to setting :attr:`slices`.
         :param meta: key-value metadata.
             Optional, identical to setting  :attr:`meta`.
 
@@ -203,10 +274,12 @@ class Signal:
         self.label = label  #: Name of the signal (e. g. for plot label).
 
         self._y = _np.asarray(y, dtype=float)
+        _validate_1d(self._y, "y")
         self._t: _npt.NDArray[_np.float64] | None = None
 
         if t is not None:
             self._t = _np.asarray(t, dtype=float)
+            _validate_1d(self._t, "t")
             self._validate_timestamps()
             self._fs = 1.0 / _np.diff(self._t).mean()
             self._t_from_fs = False
@@ -220,7 +293,10 @@ class Signal:
         self.chpoints = chpoints
 
         self._marks = _MarksProxy({}, len(self._y))
-        self.marks = marks  # type: ignore
+        self.marks = marks  # type: ignore[assignment]
+
+        self._slices = _SlicesProxy({}, len(self._y))
+        self.slices = slices  # type: ignore[assignment]
 
         #: Key-value metadata (value can be anything accepted by
         #: :attr:`h5py.Group.attrs`.
@@ -239,11 +315,12 @@ class Signal:
         return self._y
 
     @y.setter
-    def y(self, v: _ca.Sequence) -> None:
-        new_y = _np.asarray(v, dtype=float)
-        if len(new_y) != len(self._y):
+    def y(self, new_y: _ca.Iterable) -> None:
+        new_ya = _np.asarray(new_y, dtype=float)
+        _validate_1d(new_ya, "new_y")
+        if len(new_ya) != len(self._y):
             raise ValueError(f"New `y` must not change length ({len(self._y)})")
-        self._y = new_y
+        self._y = new_ya
 
     @property
     def t(self) -> _npt.NDArray[_np.float64]:
@@ -290,7 +367,7 @@ class Signal:
             curr_i_max = i_max if i == n_ccycles - 1 else s.indices[i + 1].onset - 1
             for pname, value in ci.without_unset().items():
                 if not ((0 if pname == "onset" else ci.onset) <= value <= curr_i_max):
-                    raise ValueError(f"points[{i}].{pname}={value} is out of range")
+                    raise ValueError(f"indices[{i}].{pname}={value} is out of range")
         self._chpoints = _dc.replace(
             s, indices=sorted(s.indices, key=lambda e: e.onset)
         )
@@ -303,6 +380,12 @@ class Signal:
         """Indices of onset points, empty array if not yet stored (readonly).
 
         Can be modified via :attr:`chpoints`.
+
+        .. seealso::
+            :meth:`by_onset`
+            :meth:`ccycles`
+            :meth:`iter_ccycles`
+            :meth:`iter_ccycle_slices`
         """
         return self._onsets
 
@@ -318,6 +401,10 @@ class Signal:
         Index range is validated on assignments like ``signal.marks = {'a': [1]}``
         or ``signal.marks['a'] = [1]``.
 
+        .. note::
+            *mypy* gives a false positive error on assignment, use
+            ``# type: ignore[assignment]``.
+
         :returns: an object behaving exactly like a ``dict[str, np.ndarray[int]]``.
         :raises ValueError: when a mark index is out of range
         """
@@ -326,6 +413,30 @@ class Signal:
     @marks.setter
     def marks(self, m: dict[str, _ca.Iterable[int]] | _MarksProxy | None):
         self._marks = _MarksProxy(m or {}, len(self._y))
+
+    @property
+    def slices(self) -> _SlicesProxy:
+        """Named slice lists e. g. to mark sections of the measurement.
+
+        Index range is validated on assignments like::
+
+            signal.slices = {'hand_movement': [np.s_[100:600]]}
+            signal.slices['hand_movement'] = [slice(100, 200)]
+
+        ``step`` is not supported in slices.
+
+        .. note::
+            *mypy* gives a false positive error on assignment, use
+            ``# type: ignore[assignment]``.
+
+        :returns: an object behaving exactly like a ``dict[str, list[slice]]``.
+        :raises ValueError: when a ``start`` or ``stop`` is out of range.
+        """
+        return self._slices
+
+    @slices.setter
+    def slices(self, v: _SlicesInput | None):
+        self._slices = _SlicesProxy(v or {}, len(self._y))
 
     def __getitem__(self, slc: slice) -> "Signal":
         """Creates a **view** of a section of the signal.
@@ -389,6 +500,16 @@ class Signal:
                 name: v[(v >= start) & (v < stop)] - start
                 for name, v in self.marks.items()
             },
+            slices={
+                name: [
+                    slice(
+                        max(0, slc.start - start), min(slc.stop - start, stop - start)
+                    )
+                    for slc in slcs
+                    if start <= slc.start < stop or start <= slc.stop <= stop
+                ]
+                for name, slcs in self.slices.items()
+            },
             meta=self.meta,
         )
         section._fs = self._fs
@@ -403,11 +524,13 @@ class Signal:
 
     def copy(
         self,
-        y: _ca.Sequence | None = None,
+        *,
+        y: _ca.Iterable | None = None,
         unit: str | None = None,
         label: str | None = None,
         chpoints: ChPoints | None = None,
         marks: dict[str, _ca.Iterable[int]] | None = None,
+        slices: _SlicesInput | None = None,
         meta: dict[str, _t.Any] | None = None,
     ) -> "Signal":
         """Creates a copy of the signal (all :mod:`numpy` arrays are copied).
@@ -415,13 +538,14 @@ class Signal:
         Fields passed as arguments will be replaced.
         """
         return type(self)(
-            y=(self.y.copy() if y is None else y),  # type: ignore
+            y=(self.y.copy() if y is None else y),
             unit=self.unit if unit is None else unit,
             t=None if self._t is None else self._t.copy(),
             fs=None if self._t is not None else self._fs,
             label=self.label if label is None else label,
             chpoints=(_cp.deepcopy(self.chpoints) if chpoints is None else chpoints),
             marks=(_cp.deepcopy(self.marks.data) if marks is None else marks),
+            slices=(_cp.deepcopy(self._slices.data) if slices is None else slices),
             meta=((self.meta and _cp.deepcopy(self.meta)) if meta is None else meta),
         )
 
@@ -443,9 +567,16 @@ class Signal:
     def t2i(self, t_s: float) -> int:
         """Finds the index closest to the given time point.
 
+        Negative ``t_s`` is counted from the end.
+
         :param t_s: time point in seconds
         :return: index
+
+        .. seealso::
+            :meth:`by_t`
         """
+        if t_s < 0:
+            t_s = self.t[-1] + t_s
         return _np.abs(self.t - t_s).argmin()
 
     def iter_ccycle_slices(self) -> _ca.Iterator[slice]:
@@ -492,6 +623,39 @@ class Signal:
             index of the last onset in :attr:`onsets`.
         """
         return _CCyclesIndexer(self)
+
+    @property
+    def by_t(self) -> _ByTIndexer:
+        """Allows selecting signal parts by time points.
+
+        ``step`` of slice is not supported. Time points can be non-integer
+        or from the end::
+
+            signal.by_t[2.0:-3.5]
+
+        .. note::
+            *mypy* gives a false positive error, use ``# type: ignore[misc]``.
+
+        :returns: an indexer object capable of slicing:
+            Setting signal parts is not supported.
+        """
+        return _ByTIndexer(self)
+
+    @property
+    def by_onset(self) -> _InclusiveByOnsetIndexer:
+        """Allows selecting signal parts by onsets.
+
+        ``step`` of slice is not supported. If ``start`` or ``stop`` is ``None``,
+        then they refer to the first and the last onset respectively.
+
+        .. note::
+            Selection is inclusive, the specified end onset point is also
+            included, to mark that the last part is a full cardiac cycle too.
+
+        :returns: an indexer object capable of slicing:
+            Setting signal parts is not supported.
+        """
+        return _InclusiveByOnsetIndexer(self)
 
     def plot(
         self,
@@ -621,6 +785,11 @@ class Signal:
             for name, indices in self.marks.items():
                 marks_gr.create_dataset(name, data=indices)
 
+        if self.slices:
+            slices_gr = group.create_group("slices")
+            for name, slices in self.slices.items():
+                slices_gr.create_dataset(name, data=[[s.start, s.stop] for s in slices])
+
         if self.meta:
             meta_gr = group.create_group("meta")
             for name, value in self.meta.items():
@@ -668,6 +837,14 @@ class Signal:
                 if (g := group.get("marks"))
                 else None
             ),
+            slices=(
+                {
+                    name: [slice(start, stop) for start, stop in slices]
+                    for name, slices in g.items()
+                }
+                if (g := group.get("slices"))
+                else None
+            ),
             meta=(
                 {name: value for name, value in g.attrs.items()}
                 if (g := group.get("meta"))
@@ -691,3 +868,8 @@ class Signal:
             raise ValueError(
                 f"Timestamps are not monotone increasing at indices {back.tolist()}"
             )
+
+
+def _validate_1d(a: _t.Any, name: str) -> None:
+    if (d := _np.ndim(a)) != 1:
+        raise ValueError(f"`{name}` must be 1D, got {d}D")
