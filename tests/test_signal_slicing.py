@@ -1,7 +1,64 @@
 import numpy as np
 import pytest
 
-from bpwave import Signal
+from bpwave import ChPoints, CpIndices, Signal
+
+
+def test__signal__getitem(simple_signal: Signal) -> None:
+    s2 = simple_signal[1:-3]
+    assert s2.y.base is simple_signal.y
+    assert s2.y.tolist() == [1, 2, 1, 0, 1]
+    assert s2.t.base is simple_signal.t
+    assert np.allclose(s2.t, np.array([1, 2, 3, 4, 5], float) / 30.0)
+    assert s2.onsets.tolist() == [3]
+    assert s2.chpoints == ChPoints(
+        alg="manual",
+        params={},
+        version="0",
+        indices=[
+            CpIndices(onset=0, sys_peak=2) - 1,
+            CpIndices(onset=4, sys_peak=-1) - 1,
+        ],
+    )
+    assert s2.marks == {"a": [0]}
+    assert s2.slices == {"a": [slice(1, 3)]}
+    assert s2.meta == simple_signal.meta
+
+
+def test__signal__getitem__validation(simple_signal: Signal) -> None:
+    with pytest.raises(NotImplementedError):
+        simple_signal[0]  # type: ignore # noqa
+    with pytest.raises(NotImplementedError):
+        simple_signal[0:2:2]  # noqa
+
+
+def test__signal__getitem__start(simple_signal: Signal) -> None:
+    s2 = simple_signal[-6:]
+    assert s2.y.tolist() == [1, 0, 1, 2, 1, 0]
+    assert s2.chpoints == ChPoints(
+        alg="manual",
+        params={},
+        version="0",
+        indices=[
+            CpIndices(onset=4, sys_peak=6) - (len(simple_signal.y) - 6),
+            CpIndices(onset=8) - (len(simple_signal.y) - 6),
+        ],
+    )
+    assert s2.marks.keys() == {"a"}
+    assert s2.marks["a"].size == 0
+
+
+def test__signal__getitem__stop(simple_signal: Signal) -> None:
+    s2 = simple_signal[:4]
+    assert s2.y.tolist() == [0, 1, 2, 1]
+    assert s2.chpoints == ChPoints(
+        alg="manual",
+        params={},
+        version="0",
+        indices=[
+            CpIndices(onset=0, sys_peak=2),
+        ],
+    )
 
 
 def test__signal__by_t__start_stop(bp_signal: Signal) -> None:
@@ -76,3 +133,35 @@ def test__signal__by_onset__back(bp_signal: Signal) -> None:
 def test__signal__by_onset__validation(bp_signal: Signal) -> None:
     with pytest.raises(ValueError):
         bp_signal.by_onset[::1]  # noqa
+
+
+def test__signal__iter_ccycle_slices(simple_signal: Signal) -> None:
+    with pytest.warns():
+        s = Signal(y=[1, 2], fs=10.0)
+        assert s.onsets.size == 0
+        assert not list(s.iter_ccycle_slices())
+    assert list(simple_signal.iter_ccycle_slices()) == [
+        slice(0, 4),
+        slice(4, 8),
+    ]
+
+
+def test__signal__iter_periods(simple_signal: Signal) -> None:
+    assert [p.y.tolist() for p in simple_signal.iter_ccycles()] == [
+        [0.0, 1.0, 2.0, 1.0],
+        [0.0, 1.0, 2.0, 1.0],
+    ]
+
+
+def test__signal__ccycles(simple_signal: Signal) -> None:
+    c1 = simple_signal.ccycles[1]
+    assert c1.chpoints is not None
+    assert len(c1.chpoints.indices) == 1
+    assert np.allclose(
+        c1.y, simple_signal.y[simple_signal.onsets[1] : simple_signal.onsets[2]]
+    )
+    c2 = simple_signal.ccycles[:2]
+    assert len(c2) == 2
+    for c in c2:
+        assert c.chpoints is not None
+        assert len(c.chpoints.indices) == 1

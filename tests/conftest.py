@@ -52,3 +52,25 @@ def bp_signal(bp_signal_data: dict[str, Any]) -> Signal:
         label="AAC27",
         meta={"source": "PhysioNet"},
     )
+
+
+@pytest.fixture(scope="function")
+def simple_signal() -> Signal:
+    return Signal(
+        y=[0, 1, 2, 1, 0, 1, 2, 1, 0],
+        fs=30.0,
+        chpoints=ChPoints(
+            alg="manual",
+            params={},
+            version="0",
+            indices=[
+                CpIndices(onset=0, sys_peak=2),
+                CpIndices(onset=4, sys_peak=6),
+                CpIndices(onset=8),
+            ],
+        ),
+        label="Simple signal",
+        marks={"a": [1]},
+        slices={"a": [np.s_[2:4]]},
+        meta={"source": "test"},
+    )

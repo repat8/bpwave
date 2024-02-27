@@ -1,4 +1,4 @@
-import dataclasses
+import pathlib as pl
 
 import h5py  # type: ignore
 import matplotlib.pyplot as plt
@@ -6,137 +6,6 @@ import numpy as np
 import pytest
 
 from bpwave import ChPoints, CpIndices, Signal, visu
-
-from . import utils
-
-
-@pytest.fixture(scope="function")
-def cpindices_all_set() -> CpIndices:
-    return CpIndices(
-        onset=100,
-        sys_peak=120,
-        refl_onset=140,
-        refl_peak=150,
-        dicr_notch=160,
-        dicr_peak=170,
-    )
-
-
-@pytest.fixture(scope="function")
-def cpindices_with_unset() -> CpIndices:
-    return CpIndices(
-        onset=100,
-        sys_peak=120,
-        dicr_notch=160,
-        dicr_peak=170,
-    )
-
-
-@pytest.fixture(scope="function")
-def simple_signal() -> Signal:
-    return Signal(
-        y=[0, 1, 2, 1, 0, 1, 2, 1, 0],
-        fs=30.0,
-        chpoints=ChPoints(
-            alg="manual",
-            params={},
-            version="0",
-            indices=[
-                CpIndices(onset=0, sys_peak=2),
-                CpIndices(onset=4, sys_peak=6),
-                CpIndices(onset=8),
-            ],
-        ),
-        label="Simple signal",
-        marks={"a": [1]},
-        slices={"a": [np.s_[2:4]]},
-        meta={"source": "test"},
-    )
-
-
-def test__cpindices__names() -> None:
-    assert CpIndices.NAMES == tuple(f.name for f in dataclasses.fields(CpIndices))
-
-
-def test__cpindices__empty() -> None:
-    with pytest.warns():
-        CpIndices()
-
-
-def test__cpindices__min(cpindices_with_unset) -> None:
-    assert cpindices_with_unset.min() == 100
-    assert cpindices_with_unset.max() == 170
-
-
-def test__cpindices__sub__in_range(cpindices_all_set: CpIndices) -> None:
-    offset = 10
-    assert cpindices_all_set - offset == CpIndices(
-        onset=100 - offset,
-        sys_peak=120 - offset,
-        refl_onset=140 - offset,
-        refl_peak=150 - offset,
-        dicr_notch=160 - offset,
-        dicr_peak=170 - offset,
-    )
-
-
-def test__cpindices__sub__out_of_range(cpindices_all_set: CpIndices) -> None:
-    offset = 120
-    assert cpindices_all_set - offset == CpIndices(
-        onset=-1,
-        sys_peak=0,
-        refl_onset=140 - offset,
-        refl_peak=150 - offset,
-        dicr_notch=160 - offset,
-        dicr_peak=170 - offset,
-    )
-
-
-def test__cpindices__sub__unset(cpindices_with_unset: CpIndices) -> None:
-    offset = 10
-    assert cpindices_with_unset - offset == CpIndices(
-        onset=100 - offset,
-        sys_peak=120 - offset,
-        refl_onset=-1,
-        refl_peak=-1,
-        dicr_notch=160 - offset,
-        dicr_peak=170 - offset,
-    )
-
-
-def test__cpindices__without_unset(cpindices_with_unset: CpIndices) -> None:
-    assert cpindices_with_unset.without_unset() == {
-        "onset": 100,
-        "sys_peak": 120,
-        "dicr_notch": 160,
-        "dicr_peak": 170,
-    }
-
-
-def test__cpindices__to_array(cpindices_with_unset: CpIndices) -> None:
-    assert (
-        cpindices_with_unset.to_array() == np.array([100, 120, -1, -1, 160, 170])
-    ).all()
-
-
-def test__cpindices__clamped(cpindices_with_unset: CpIndices) -> None:
-    assert cpindices_with_unset.clamped() == cpindices_with_unset
-    assert (
-        cpindices_with_unset.clamped(start=cpindices_with_unset.onset)
-        == cpindices_with_unset
-    )
-    assert cpindices_with_unset.clamped(start=110) == CpIndices(
-        onset=-1,
-        sys_peak=120,
-        dicr_notch=160,
-        dicr_peak=170,
-    )
-    assert cpindices_with_unset.clamped(start=110, stop=170) == CpIndices(
-        onset=-1,
-        sys_peak=120,
-        dicr_notch=160,
-        dicr_peak=-1,
-    )
 
 
 def test__signal__t__calc() -> None:
@@ -252,63 +121,6 @@ def test__signal__slices(simple_signal: Signal) -> None:
         simple_signal.slices["b"] = [np.s_[-10:n]]
 
 
-def test__signal__getitem(simple_signal: Signal) -> None:
-    s2 = simple_signal[1:-3]
-    assert s2.y.base is simple_signal.y
-    assert s2.y.tolist() == [1, 2, 1, 0, 1]
-    assert s2.t.base is simple_signal.t
-    assert np.allclose(s2.t, np.array([1, 2, 3, 4, 5], float) / 30.0)
-    assert s2.onsets.tolist() == [3]
-    assert s2.chpoints == ChPoints(
-        alg="manual",
-        params={},
-        version="0",
-        indices=[
-            CpIndices(onset=0, sys_peak=2) - 1,
-            CpIndices(onset=4, sys_peak=-1) - 1,
-        ],
-    )
-    assert s2.marks == {"a": [0]}
-    assert s2.slices == {"a": [slice(1, 3)]}
-    assert s2.meta == simple_signal.meta
-
-
-def test__signal__getitem__validation(simple_signal: Signal) -> None:
-    with pytest.raises(NotImplementedError):
-        simple_signal[0]  # type: ignore # noqa
-    with pytest.raises(NotImplementedError):
-        simple_signal[0:2:2]  # noqa
-
-
-def test__signal__getitem__start(simple_signal: Signal) -> None:
-    s2 = simple_signal[-6:]
-    assert s2.y.tolist() == [1, 0, 1, 2, 1, 0]
-    assert s2.chpoints == ChPoints(
-        alg="manual",
-        params={},
-        version="0",
-        indices=[
-            CpIndices(onset=4, sys_peak=6) - (len(simple_signal.y) - 6),
-            CpIndices(onset=8) - (len(simple_signal.y) - 6),
-        ],
-    )
-    assert s2.marks.keys() == {"a"}
-    assert s2.marks["a"].size == 0
-
-
-def test__signal__getitem__stop(simple_signal: Signal) -> None:
-    s2 = simple_signal[:4]
-    assert s2.y.tolist() == [0, 1, 2, 1]
-    assert s2.chpoints == ChPoints(
-        alg="manual",
-        params={},
-        version="0",
-        indices=[
-            CpIndices(onset=0, sys_peak=2),
-        ],
-    )
-
-
 def test__signal__copy(simple_signal: Signal) -> None:
     s2 = simple_signal.copy()
     assert s2.y.base is None
@@ -362,38 +174,6 @@ def test__signal__t2i(simple_signal: Signal) -> None:
     assert i == 5
 
 
-def test__signal__iter_ccycle_slices(simple_signal: Signal) -> None:
-    with pytest.warns():
-        s = Signal(y=[1, 2], fs=10.0)
-        assert s.onsets.size == 0
-        assert not list(s.iter_ccycle_slices())
-    assert list(simple_signal.iter_ccycle_slices()) == [
-        slice(0, 4),
-        slice(4, 8),
-    ]
-
-
-def test__signal__iter_periods(simple_signal: Signal) -> None:
-    assert [p.y.tolist() for p in simple_signal.iter_ccycles()] == [
-        [0.0, 1.0, 2.0, 1.0],
-        [0.0, 1.0, 2.0, 1.0],
-    ]
-
-
-def test__signal__ccycles(simple_signal: Signal) -> None:
-    c1 = simple_signal.ccycles[1]
-    assert c1.chpoints is not None
-    assert len(c1.chpoints.indices) == 1
-    assert np.allclose(
-        c1.y, simple_signal.y[simple_signal.onsets[1] : simple_signal.onsets[2]]
-    )
-    c2 = simple_signal.ccycles[:2]
-    assert len(c2) == 2
-    for c in c2:
-        assert c.chpoints is not None
-        assert len(c.chpoints.indices) == 1
-
-
 @pytest.mark.human
 def test__signal__plot(simple_signal: Signal) -> None:
     with visu.figure(nrows=4, title="test__signal__plot", figsize=(5, 10)) as (
@@ -409,8 +189,11 @@ def test__signal__plot(simple_signal: Signal) -> None:
     plt.show()
 
 
-def test__signal__hdf__t_from_fs_has_segmentation(simple_signal):
-    path = utils.OUT_FOLDER / "signal1.hdf5"
+def test__signal__hdf__t_from_fs_has_segmentation(
+    simple_signal: Signal,
+    out_folder: pl.Path,
+) -> None:
+    path = out_folder / "signal1.hdf5"
     with h5py.File(path, "w") as out_file:
         simple_signal.to_hdf(out_file)
     with h5py.File(path, "r") as in_file:
