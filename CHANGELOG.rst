@@ -1,4 +1,4 @@
-0.0.2 (2024--)
+0.0.2 (2024-02-27)
     Breaking changes:
 
     * ``Signal.copy``: arguments made keyword-only
