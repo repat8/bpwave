@@ -153,10 +153,12 @@ class _SlicesProxy(_col.UserDict):
         super().__setitem__(key, list(value))
 
 
-class _CCyclesIndexer:
+class _SignalIndexer:
     def __init__(self, signal: "Signal"):
         self._signal = signal
 
+
+class _CCyclesIndexer(_SignalIndexer):
     @_t.overload
     def __getitem__(self, item: int) -> "Signal":
         ...
@@ -172,6 +174,34 @@ class _CCyclesIndexer:
                 return self._signal[slices[item]]
             case slice():
                 return [self._signal[s] for s in slices[item]]
+
+
+class _ByTIndexer(_SignalIndexer):
+    def __getitem__(self, item: slice) -> "Signal":
+        match item:
+            case slice(start=start, stop=stop, step=None):
+                if start is not None:
+                    start = self._signal.t2i(start)
+                if stop is not None:
+                    stop = self._signal.t2i(stop)
+                return self._signal[start:stop]
+            case _:
+                raise ValueError(f"Unsupported time-based index {item}")
+
+
+class _InclusiveByOnsetIndexer(_SignalIndexer):
+    def __getitem__(self, item: slice) -> "Signal":
+        match item:
+            case slice(start=start, stop=stop, step=None):
+                if start is None:
+                    start = 0
+                if stop is None:
+                    stop = -1
+                return self._signal[
+                    self._signal.onsets[start] : self._signal.onsets[stop] + 1
+                ]
+            case _:
+                raise ValueError(f"Unsupported time-based index {item}")
 
 
 class Signal:
@@ -350,6 +380,12 @@ class Signal:
         """Indices of onset points, empty array if not yet stored (readonly).
 
         Can be modified via :attr:`chpoints`.
+
+        .. seealso::
+            :meth:`by_onset`
+            :meth:`ccycles`
+            :meth:`iter_ccycles`
+            :meth:`iter_ccycle_slices`
         """
         return self._onsets
 
@@ -364,6 +400,10 @@ class Signal:
 
         Index range is validated on assignments like ``signal.marks = {'a': [1]}``
         or ``signal.marks['a'] = [1]``.
+
+        .. note::
+            *mypy* gives a false positive error on assignment, use
+            ``# type: ignore[assignment]``.
 
         :returns: an object behaving exactly like a ``dict[str, np.ndarray[int]]``.
         :raises ValueError: when a mark index is out of range
@@ -384,6 +424,10 @@ class Signal:
             signal.slices['hand_movement'] = [slice(100, 200)]
 
         ``step`` is not supported in slices.
+
+        .. note::
+            *mypy* gives a false positive error on assignment, use
+            ``# type: ignore[assignment]``.
 
         :returns: an object behaving exactly like a ``dict[str, list[slice]]``.
         :raises ValueError: when a ``start`` or ``stop`` is out of range.
@@ -523,9 +567,16 @@ class Signal:
     def t2i(self, t_s: float) -> int:
         """Finds the index closest to the given time point.
 
+        Negative ``t_s`` is counted from the end.
+
         :param t_s: time point in seconds
         :return: index
+
+        .. seealso::
+            :meth:`by_t`
         """
+        if t_s < 0:
+            t_s = self.t[-1] + t_s
         return _np.abs(self.t - t_s).argmin()
 
     def iter_ccycle_slices(self) -> _ca.Iterator[slice]:
@@ -572,6 +623,39 @@ class Signal:
             index of the last onset in :attr:`onsets`.
         """
         return _CCyclesIndexer(self)
+
+    @property
+    def by_t(self) -> _ByTIndexer:
+        """Allows selecting signal parts by time points.
+
+        ``step`` of slice is not supported. Time points can be non-integer
+        or from the end::
+
+            signal.by_t[2.0:-3.5]
+
+        .. note::
+            *mypy* gives a false positive error, use ``# type: ignore[misc]``.
+
+        :returns: an indexer object capable of slicing:
+            Setting signal parts is not supported.
+        """
+        return _ByTIndexer(self)
+
+    @property
+    def by_onset(self) -> _InclusiveByOnsetIndexer:
+        """Allows selecting signal parts by onsets.
+
+        ``step`` of slice is not supported. If ``start`` or ``stop`` is ``None``,
+        then they refer to the first and the last onset respectively.
+
+        .. note::
+            Selection is inclusive, the specified end onset point is also
+            included, to mark that the last part is a full cardiac cycle too.
+
+        :returns: an indexer object capable of slicing:
+            Setting signal parts is not supported.
+        """
+        return _InclusiveByOnsetIndexer(self)
 
     def plot(
         self,

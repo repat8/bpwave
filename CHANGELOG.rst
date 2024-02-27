@@ -7,6 +7,8 @@
 
     * ``CpIndices.NAMES``
     * New attribute ``Signal.slices``
+    * Slicing ``Signal`` by time or onsets: ``by_t``, ``by_onset``.
+    * ``Signal.t2i`` accepts backward (negative) time point.
 
     Fixes:
 
