@@ -186,7 +186,7 @@ class _ByTIndexer(_SignalIndexer):
                     stop = self._signal.t2i(stop)
                 return self._signal[start:stop]
             case _:
-                raise ValueError(f"Unsupported time-based index {item}")
+                raise ValueError(f"Unsupported time-based slice {item}")
 
 
 class _InclusiveByOnsetIndexer(_SignalIndexer):
@@ -201,7 +201,7 @@ class _InclusiveByOnsetIndexer(_SignalIndexer):
                     self._signal.onsets[start] : self._signal.onsets[stop] + 1
                 ]
             case _:
-                raise ValueError(f"Unsupported time-based index {item}")
+                raise ValueError(f"Unsupported onset slice {item}")
 
 
 class Signal:
