@@ -61,6 +61,18 @@ def test__signal__getitem__stop(simple_signal: Signal) -> None:
     )
 
 
+def test__signal__getitem__empty_slice_removed() -> None:
+    s = Signal(
+        y=np.ones(30),
+        fs=30,
+        slices={"test": [slice(5, 10), slice(10, 15), slice(15, 20)]},
+    )
+    s2 = s[10:15]
+    assert s2.slices["test"] == [slice(0, 5)]
+    s2 = s[9:16]
+    assert s2.slices["test"] == [slice(0, 1), slice(1, 6), slice(6, 7)]
+
+
 def test__signal__by_t__start_stop(bp_signal: Signal) -> None:
     section = bp_signal.by_t[2.0:3.5]  # type: ignore[misc]
     assert np.isclose(section.t[0], 2.0, atol=1 / section.fs)

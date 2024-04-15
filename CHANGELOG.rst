@@ -1,3 +1,8 @@
+0.0.3 ()
+    Fixes:
+
+    * ``Signal.__getitem__`` can no longer produce empty slices in ``Signal.slices``.
+
 0.0.2 (2024-02-27)
     Breaking changes:
 
