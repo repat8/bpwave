@@ -476,9 +476,7 @@ class Signal:
 
         def crop_slices(slcs) -> list[slice]:
             cropped = [
-                slice(
-                    max(0, s.start - start), min(s.stop - start, stop - start)
-                )
+                slice(max(0, s.start - start), min(s.stop - start, stop - start))
                 for s in slcs
                 if start <= s.start < stop or start <= s.stop <= stop
             ]
@@ -512,10 +510,7 @@ class Signal:
                 name: v[(v >= start) & (v < stop)] - start
                 for name, v in self.marks.items()
             },
-            slices={
-                name: crop_slices(slcs)
-                for name, slcs in self.slices.items()
-            },
+            slices={name: crop_slices(slcs) for name, slcs in self.slices.items()},
             meta=self.meta,
         )
         section._fs = self._fs

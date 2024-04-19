@@ -1,4 +1,8 @@
 0.0.3 ()
+    Features:
+
+    * ``SignalReader`` base class and ``CsvReader``.
+
     Fixes:
 
     * ``Signal.__getitem__`` can no longer produce empty slices in ``Signal.slices``.
