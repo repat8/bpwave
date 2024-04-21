@@ -141,14 +141,14 @@ class _SlicesProxy(_col.UserDict):
     def __setitem__(self, key: str, value: _ca.Sequence[slice]) -> None:
         for i, slc in enumerate(value):
             if slc.step is not None:
-                warnings.warn(f"Handling `step` is not implemented (value[{i}])")
+                warnings.warn(f"Handling `step` is not implemented (value[{key}][{i}])")
             if slc.start < 0 or slc.start >= self._stop:
                 raise ValueError(
-                    f"`value[{i}].start must be valid nonnegative index of `y`"
+                    f"`value[{key}][{i}].start must be valid nonnegative index of `y`"
                 )
             if slc.stop < 0 or slc.stop > self._stop:
                 raise ValueError(
-                    f"`value[{i}].stop must be valid nonnegative index of `y`"
+                    f"`value[{key}][{i}].stop must be valid nonnegative index of `y`"
                 )
         super().__setitem__(key, list(value))
 

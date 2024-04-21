@@ -7,6 +7,7 @@
     Fixes:
 
     * ``Signal.__getitem__`` can no longer produce empty slices in ``Signal.slices``.
+    * ``Signal.slices`` validation error messages now contain the ``key``.
 
 0.0.2 (2024-02-27)
     Breaking changes:
