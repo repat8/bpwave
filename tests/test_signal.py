@@ -180,11 +180,16 @@ def test__signal__plot(simple_signal: Signal) -> None:
         _,
         axes,
     ):
+        axes = axes.ravel()
         simple_signal.plot(axes[0], title="all on")
         simple_signal.plot(axes[1], title="onsets off", onsets=False)
         simple_signal.plot(axes[2], title="points off", points=False)
         simple_signal.plot(
-            axes[3], title="filtered points", points={"sys_peak"}, onsets=False
+            axes[3],
+            title="filtered points, t0=10",
+            points={"sys_peak"},
+            onsets=False,
+            t0=10,
         )
     plt.show()
 

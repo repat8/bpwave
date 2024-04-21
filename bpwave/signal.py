@@ -667,6 +667,7 @@ class Signal:
         marks: bool | set[str] = True,
         legend: str = "auto",
         title: str | None = None,
+        t0: float | None = None,
         **plot_kw,
     ) -> _plt.Axes:
         """Plots the signal.
@@ -680,9 +681,16 @@ class Signal:
         :param legend: ``auto``: show legend when needed,
             ``off``: don't show, ``outside``: move legend out of plot area.
         :param title: plot title.
+        :param t0: shift timestamps to start from ``t0``, without copying or
+            modifying the object (unlike :meth:`shift_t`).
+
+            .. versionadded:: 0.0.3
         :param fmt_args: line style and color shorthand for :func:`visu.plot_signal`.
         :param plot_kw: keyword arguments for :func:`visu.plot_signal`.
         :return: the axes object.
+
+        .. versionchanged:: 0.0.3
+            Grid is on by default.
         """
         if not ax:
             _, ax = _plt.subplots()
@@ -694,7 +702,7 @@ class Signal:
 
         _v.plot_signal(
             ax,
-            self.t,
+            self.t if t0 is None else self.t - self.t[0] + t0,
             self.y,
             *fmt_args,
             y_unit=self.unit,
@@ -750,6 +758,9 @@ class Signal:
                 ax.legend()
         if title:
             ax.set(title=title)
+
+        ax.grid(True)
+
         return ax
 
     def to_hdf(self, group: h5py.Group) -> None:

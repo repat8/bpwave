@@ -184,7 +184,7 @@ class CsvReader(SignalReader):
         return signal
 
     def _date_to_seconds(self, x: str) -> float:
-        return _datetime_to_seconds(_dt.datetime.strptime(x, self.t_converter)) # type: ignore[arg-type]
+        return _datetime_to_seconds(_dt.datetime.strptime(x, self.t_converter))  # type: ignore[arg-type]
 
     def _read_timestamped(
         self, t_col: int, y_col: int, lines: _ca.Iterable[str]
