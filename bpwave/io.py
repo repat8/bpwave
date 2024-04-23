@@ -184,7 +184,9 @@ class CsvReader(SignalReader):
         return signal
 
     def _date_to_seconds(self, x: str) -> float:
-        return _datetime_to_seconds(_dt.datetime.strptime(x, self.t_converter))  # type: ignore[arg-type]
+        return _datetime_to_seconds(
+            _dt.datetime.strptime(x, self.t_converter),  # type: ignore[arg-type]
+        )
 
     def _read_timestamped(
         self, t_col: int, y_col: int, lines: _ca.Iterable[str]
@@ -224,3 +226,85 @@ class CsvReader(SignalReader):
 
 def _datetime_to_seconds(t: _dt.datetime) -> float:
     return t.microsecond / 1e6 + t.second + t.minute * 60 + t.hour * 3600
+
+
+def to_csv(
+    file_path: _pl.Path | str,
+    signal: _s.Signal,
+    **savetxt_kw,
+) -> set[_pl.Path]:
+    """Dumps components of the signal into multiple CSV files.
+
+    The intended use case is making the data available for other technologies
+    not easily coping with the HDF5 format.
+
+    .. note::
+        For the purpose of serializing a :class:`bpwave.Signal` object for
+        later reloading, we recommend :meth:`bpwave.Signal.to_hdf` as it
+        preserves all metadata.
+
+    :param file_path: file path of the target CSV file that will contain the
+        timestamps and data points. Other CSV files may be created as well,
+        to the same folder with multiple extensions indicating the fields of
+        ``signal``, in the format ``<original_filename>.<field>[.<key>].csv``.
+    :param signal: the signal object to be dumped.
+    :param savetxt_kw: arguments for the underlying :func:`numpy.savetxt`.
+    :return: a set of paths of the files created.
+    """
+    path = _pl.Path(file_path)
+    created_paths = {path}
+    nl = savetxt_kw.get("newline", "\n")
+    delimiter = savetxt_kw.get("delimiter", " ")
+    header = nl.join(
+        line
+        for line in [
+            f"unit={signal.unit}",
+            f"fs={signal.fs}",
+            f"t_from_fs={signal.t_from_fs}",
+            f"label={signal.label}",
+            savetxt_kw.get("header"),
+            f"t{delimiter}y",
+        ]
+        if line
+    )
+
+    _np.savetxt(path, _np.c_[signal.t, signal.y], **{**savetxt_kw, "header": header})
+    if signal.chpoints:
+        _np.savetxt(
+            p := path.with_suffix(".chpoints.csv"),
+            _np.array([ci.to_array() for ci in signal.chpoints.indices]),
+            fmt="%i",
+            **{**savetxt_kw, "header": delimiter.join(_s.CpIndices.NAMES)},
+        )
+        created_paths.add(p)
+    if signal.marks:
+        for name, indices in signal.marks.items():
+            _np.savetxt(
+                p := path.with_suffix(f".marks.{name}.csv"),
+                indices,
+                fmt="%i",
+                **{**savetxt_kw, "header": "i"},
+            )
+            created_paths.add(p)
+    if signal.slices:
+        for name, slices in signal.slices.items():
+            _np.savetxt(
+                p := path.with_suffix(f".slices.{name}.csv"),
+                [[s.start, s.stop] for s in slices],
+                fmt="%i",
+                **{**savetxt_kw, "header": f"start{delimiter}stop"},
+            )
+            created_paths.add(p)
+    if signal.meta:
+        _np.savetxt(
+            p := path.with_suffix(".meta.csv"),
+            [
+                [k, str(json.JSONEncoder(default=str).encode(v))]
+                for k, v in signal.meta.items()
+            ],
+            fmt="%s",
+            **{**savetxt_kw, "header": f"key{delimiter}value"},
+        )
+
+        created_paths.add(p)
+    return created_paths

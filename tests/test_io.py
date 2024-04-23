@@ -2,8 +2,7 @@ import pathlib as pl
 
 import pytest
 
-import bpwave
-from bpwave import CsvReader
+from bpwave import CsvReader, Signal, to_csv
 
 
 def test__csv_reader__timestamped_float_t(data_folder: pl.Path) -> None:
@@ -88,17 +87,27 @@ def test__csv_reader__invalid() -> None:
         )
 
 
-def _test_timestamped_float_comments_content(
-    s: bpwave.Signal, comments: list[str]
-) -> None:
+def _test_timestamped_float_comments_content(s: Signal, comments: list[str]) -> None:
     assert s.t.tolist() == [1.5 / 1000, 3 / 1000]
     assert s.y.tolist() == [100.5, 150]
     assert comments == ["sensor: Test", "patient: 1"]
 
 
-def _test_timestamped_dt_noheader_content(
-    s: bpwave.Signal, comments: list[str]
-) -> None:
+def _test_timestamped_dt_noheader_content(s: Signal, comments: list[str]) -> None:
     assert s.t.tolist() == [50969.457, 50969.458, 50969.459, 50969.46]
     assert s.y.tolist() == [619, 618, 617, 617]
     assert not comments
+
+
+def test__to_csv(simple_signal: Signal, out_folder: pl.Path) -> None:
+    paths = to_csv(out_folder / "to_csv.csv", simple_signal, delimiter=",")
+    expected_paths = {
+        out_folder / "to_csv.csv",
+        out_folder / "to_csv.chpoints.csv",
+        out_folder / "to_csv.marks.a.csv",
+        out_folder / "to_csv.slices.a.csv",
+        out_folder / "to_csv.meta.csv",
+    }
+    assert paths == expected_paths
+    for p in expected_paths:
+        assert p.exists()
