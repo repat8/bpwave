@@ -39,6 +39,8 @@ class SignalReader(abc.ABC, AlgMeta):
         signal, _ = c('read/from/here.csv')
 
     Implementations should override :meth:`_read`.
+
+    .. versionadded:: 0.0.3
     """
 
     def __call__(
@@ -80,6 +82,8 @@ class CsvReader(SignalReader):
 
     :meth:`__call__` returns the loaded signal and a list of comments found at
     the head of the file, the comment sign will be stripped.
+
+    .. versionadded:: 0.0.3
     """
 
     t_column: int | str | None
@@ -250,6 +254,8 @@ def to_csv(
     :param signal: the signal object to be dumped.
     :param savetxt_kw: arguments for the underlying :func:`numpy.savetxt`.
     :return: a set of paths of the files created.
+
+    .. versionadded:: 0.0.3
     """
     path = _pl.Path(file_path)
     created_paths = {path}

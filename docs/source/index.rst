@@ -7,6 +7,7 @@ bpwave
    :caption: Contents:
 
    parts/signal
+   parts/io
 
 ******************
 Quickstart
