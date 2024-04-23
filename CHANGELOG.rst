@@ -4,6 +4,7 @@
     * ``SignalReader`` base class and ``CsvReader``.
     * ``Signal.plot``: grid on by default. New parameter ``t0``.
     * ``to_csv``: simple CSV export
+    * ``ChPoints.plot``: plot independently of the containing signal.
 
     Fixes:
 

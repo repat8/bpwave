@@ -108,6 +108,44 @@ class ChPoints:
     params: dict[str, _t.Any]
     """Parameters of the algorithm, if any."""
 
+    def plot(
+        self,
+        ax: _plt.Axes,
+        *,
+        t: _np.ndarray,
+        y: _np.ndarray,
+        points: bool | set[str] = True,
+    ) -> _plt.Axes:
+        """Plots the points on the given axes ``ax`` using timestamps ``t`` and
+        amplitudes ``y``.
+
+        The purpose of this method is to be able to plot characteristic points
+        independently of the containing signal, useful for previewing results
+        of a detection algorithm.
+
+        For plotting the own characteristic points of a signal, please use
+        :meth:`Signal.plot`.
+
+        .. warning::
+            This method doesn't validate ``t`` and ``y`` against the indices.
+
+        :param ax: subplot axes.
+        :param t: timestamps.
+        :param y: amplitudes.
+        :param points: set to filter points by name. ``True`` means all.
+        :return: the axes.
+
+        .. versionadded:: 0.0.3
+        """
+        all_indices = _col.defaultdict(list)
+        for ci in self.indices:
+            for name, index in ci.without_unset().items():
+                if points is True or name in points:
+                    all_indices[name].append(index)
+        for name, indices in all_indices.items():
+            ax.plot(t[indices], y[indices], "+", label=name)
+        return ax
+
 
 class _MarksProxy(_col.UserDict):
     def __init__(
@@ -711,15 +749,12 @@ class Signal:
         )
 
         if points and self.chpoints:
-            all_indices = _col.defaultdict(list)
-            for ci in self.chpoints.indices:
-                for name, index in ci.without_unset().items():
-                    if (points is True or name in points) and not (
-                        onsets and name == "onset"
-                    ):
-                        all_indices[name].append(index)
-            for name, indices in all_indices.items():
-                ax.plot(self.t[indices], self.y[indices], "+", label=name)
+            if onsets:
+                points_ = set(CpIndices.NAMES)
+                points_ = points_ - {"onset"}
+            else:
+                points_ = points
+            self.chpoints.plot(ax, t=self.t, y=self.y, points=points_)
             has_legend = True
         if onsets and self.chpoints and len(self.onsets):
             ax.plot(
