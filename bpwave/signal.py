@@ -571,22 +571,7 @@ class Signal:
             t=self.t[slc],  # intentionally the t property
             fs=None,
             label=self.label,
-            chpoints=(
-                None
-                if self.chpoints is None
-                else _dc.replace(
-                    self.chpoints,
-                    indices=[
-                        ci.clamped(start, stop) - start
-                        for ci in self.chpoints.indices
-                        if (
-                            (ci.min() >= start and ci.max() < stop)
-                            or (ci.min() <= start <= ci.max())
-                            or (ci.min() < stop <= ci.max())
-                        )
-                    ],
-                )
-            ),
+            chpoints=(None if self.chpoints is None else self.chpoints[start:stop]),
             marks={
                 name: v[(v >= start) & (v < stop)] - start
                 for name, v in self.marks.items()
