@@ -21,6 +21,9 @@ class CpIndices:
     """Indices of the characteristic points of a single period of an ABP signal.
 
     Fields are optional; missing entries get negative value.
+
+    .. warning::
+        Please don't use negative (backwards) indexing, set values must be >= 0.
     """
 
     NAMES: _t.ClassVar[tuple[str, str, str, str, str, str]] = (
@@ -33,59 +36,67 @@ class CpIndices:
     )
     """Index names in the same order as values in :meth:`to_array`."""
 
-    onset: int = -1
+    UNSET: _t.ClassVar[int] = -1
+    """Value representing unset value.
+
+    .. versionadded:: 0.0.3
+    """
+
+    onset: int = UNSET
     """Onset."""
 
-    sys_peak: int = -1
+    sys_peak: int = UNSET
     """Systolic peak."""
 
-    refl_onset: int = -1
+    refl_onset: int = UNSET
     """Onset of the reflected wave."""
 
-    refl_peak: int = -1
+    refl_peak: int = UNSET
     """Peak of the reflected wave."""
 
-    dicr_notch: int = -1
+    dicr_notch: int = UNSET
     """Dicrotic notch."""
 
-    dicr_peak: int = -1
+    dicr_peak: int = UNSET
     """Peak of the dicrotic wave."""
 
     def __post_init__(self):
-        if (self.to_array() < 0).all():
+        if (self.to_array() == self.UNSET).all():
             warnings.warn("None of the indices are set.")
 
     def __sub__(self, shift: int) -> "CpIndices":
         """Subtracts the same scalar from all indices."""
         return CpIndices(
             **{
-                n: shifted if (shifted := v - shift) >= 0 else -1
+                n: shifted if (shifted := v - shift) >= 0 else self.UNSET
                 for n, v in self.without_unset().items()
             }
         )
 
     def min(self) -> int:
         """Smallest set index."""
-        return min(self.without_unset().values(), default=-1)
+        return min(self.without_unset().values(), default=self.UNSET)
 
     def max(self) -> int:
         """Largest set index."""
-        return max(self.without_unset().values(), default=-1)
+        return max(self.without_unset().values(), default=self.UNSET)
 
     def clamped(self, start: int | None = None, stop: int | None = None) -> "CpIndices":
         """Keeps only the indices contained in the specified range."""
         start = start or 0
-        stop = stop or _np.iinfo(int).max
+        stop = _np.iinfo(int).max if stop is None else stop
         return CpIndices(
             **{
-                n: v if start <= v < stop else -1
+                n: v if start <= v < stop else self.UNSET
                 for n, v in self.without_unset().items()
             }
         )
 
     def without_unset(self) -> dict[str, int]:
         """Returns the existing points in a ``dict``."""
-        return {name: value for name, value in self.__dict__.items() if value >= 0}
+        return {
+            name: value for name, value in self.__dict__.items() if value != self.UNSET
+        }
 
     def to_array(self) -> _npt.NDArray[_np.int64]:
         """The points as numpy array."""
@@ -107,6 +118,38 @@ class ChPoints:
 
     params: dict[str, _t.Any]
     """Parameters of the algorithm, if any."""
+
+    def __getitem__(self, slc: slice) -> "ChPoints":
+        """Returns a copy with sliced ``indices``.
+
+        Negative (backwards) indices and setting ``step`` is not supported.
+
+        .. versionadded:: 0.0.3
+        """
+        if not isinstance(slc, slice):
+            raise NotImplementedError("Only slicing is supported")
+        if slc.step is not None:
+            raise NotImplementedError("Step is not yet supported")
+        if (slc.start is not None and slc.start < 0) or (
+            slc.stop is not None and slc.stop < 0
+        ):
+            raise NotImplementedError("Negative indices not supported")
+
+        start = slc.start or 0
+        stop = _np.iinfo(int).max if slc.stop is None else slc.stop
+
+        return _dc.replace(
+            self,
+            indices=[
+                ci.clamped(start, stop) - start
+                for ci in self.indices
+                if (
+                    (ci.min() >= start and ci.max() < stop)
+                    or (ci.min() <= start <= ci.max())
+                    or (ci.min() < stop <= ci.max())
+                )
+            ],
+        )
 
     def plot(
         self,
