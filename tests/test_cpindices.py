@@ -57,7 +57,7 @@ def test__cpindices__sub__in_range(cpindices_all_set: CpIndices) -> None:
 def test__cpindices__sub__out_of_range(cpindices_all_set: CpIndices) -> None:
     offset = 120
     assert cpindices_all_set - offset == CpIndices(
-        onset=-1,
+        onset=CpIndices.UNSET,
         sys_peak=0,
         refl_onset=140 - offset,
         refl_peak=150 - offset,
@@ -71,10 +71,34 @@ def test__cpindices__sub__unset(cpindices_with_unset: CpIndices) -> None:
     assert cpindices_with_unset - offset == CpIndices(
         onset=100 - offset,
         sys_peak=120 - offset,
-        refl_onset=-1,
-        refl_peak=-1,
+        refl_onset=CpIndices.UNSET,
+        refl_peak=CpIndices.UNSET,
         dicr_notch=160 - offset,
         dicr_peak=170 - offset,
+    )
+
+
+def test__cpindices__add__in_range(cpindices_all_set: CpIndices) -> None:
+    offset = 10
+    assert cpindices_all_set + offset == CpIndices(
+        onset=100 + offset,
+        sys_peak=120 + offset,
+        refl_onset=140 + offset,
+        refl_peak=150 + offset,
+        dicr_notch=160 + offset,
+        dicr_peak=170 + offset,
+    )
+
+
+def test__cpindices__add__unset(cpindices_with_unset: CpIndices) -> None:
+    offset = 10
+    assert cpindices_with_unset + offset == CpIndices(
+        onset=100 + offset,
+        sys_peak=120 + offset,
+        refl_onset=CpIndices.UNSET,
+        refl_peak=CpIndices.UNSET,
+        dicr_notch=160 + offset,
+        dicr_peak=170 + offset,
     )
 
 

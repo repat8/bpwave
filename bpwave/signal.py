@@ -64,14 +64,28 @@ class CpIndices:
         if (self.to_array() == self.UNSET).all():
             warnings.warn("None of the indices are set.")
 
-    def __sub__(self, shift: int) -> "CpIndices":
-        """Subtracts the same scalar from all indices."""
+    def __add__(self, shift: int) -> "CpIndices":
+        """Adds the same scalar to all indices.
+
+        A possible use case is when characteristic points are detected on a
+        shorter section of a signal, but the result needs to be trasferred to
+        the full length one.
+
+        .. versionadded:: 0.0.3
+        """
         return CpIndices(
             **{
-                n: shifted if (shifted := v - shift) >= 0 else self.UNSET
+                n: shifted if (shifted := v + shift) >= 0 else self.UNSET
                 for n, v in self.without_unset().items()
             }
         )
+
+    def __sub__(self, shift: int) -> "CpIndices":
+        """Subtracts the same scalar from all indices.
+
+        .. versionadded:: 0.0.3
+        """
+        return self + -shift
 
     def min(self) -> int:
         """Smallest set index."""
@@ -151,13 +165,34 @@ class ChPoints:
             ],
         )
 
+    def __add__(self, shift: int) -> "ChPoints":
+        """Adds the same scalar to all indices.
+
+        A possible use case is when characteristic points are detected on a
+        shorter section of a signal, but the result needs to be trasferred to
+        the full length one.
+
+        .. versionadded:: 0.0.3
+        """
+        return _dc.replace(
+            self,
+            indices=[ci + shift for ci in self.indices],
+        )
+
+    def __sub__(self, shift: int) -> "ChPoints":
+        """Subtracts the same scalar from all indices.
+
+        .. versionadded:: 0.0.3
+        """
+        return self + -shift
+
     def plot(
         self,
         ax: _plt.Axes,
         *,
         t: _np.ndarray,
         y: _np.ndarray,
-        points: bool | set[str] = True,
+        points: _t.Literal[True] | set[str] = True,
     ) -> _plt.Axes:
         """Plots the points on the given axes ``ax`` using timestamps ``t`` and
         amplitudes ``y``.
@@ -777,6 +812,7 @@ class Signal:
         )
 
         if points and self.chpoints:
+            points_: bool | set[str]
             if onsets:
                 points_ = set(CpIndices.NAMES)
                 points_ = points_ - {"onset"}

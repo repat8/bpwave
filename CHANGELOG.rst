@@ -5,7 +5,7 @@
     * ``Signal.plot``: grid on by default. New parameter ``t0``.
     * ``to_csv``: simple CSV export
     * ``ChPoints.plot``: plot independently of the containing signal.
-    * Slicing of ``ChPoints``
+    * Slicing of ``ChPoints``, shifting indices with scalar (``+, -``)
 
     Fixes:
 

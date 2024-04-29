@@ -212,3 +212,11 @@ def test__signal__hdf__t_from_fs_has_segmentation(
     assert s_loaded.marks == simple_signal.marks
     assert s_loaded.slices == simple_signal.slices
     assert s_loaded.meta == simple_signal.meta
+
+
+def test__signal__repr(simple_signal: Signal) -> None:
+    assert repr(simple_signal) == "<Signal of 9 values>"
+
+
+def test__signal__str(simple_signal: Signal) -> None:
+    assert str(simple_signal) == "<Signal of 9 values>"
