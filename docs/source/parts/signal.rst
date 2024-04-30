@@ -15,7 +15,7 @@ plotting and storage:
 *   sampling frequency,
 *   timestamps,
 *   characteristic points,
-*   markers (arbitrary, named indices) and
+*   markers and slices (arbitrary, named indices and ranges between indices) and
 *   key-value metadata.
 
 :class:`Signal` supports serialization to HDF5 [HDF5]_ using the :mod:`h5py`
@@ -37,7 +37,8 @@ API Reference
 
 .. autoclass:: bpwave.CpIndices
     :members:
-    :special-members: __sub__
+    :special-members: __add__, __sub__
 
 .. autoclass:: bpwave.ChPoints
     :members:
+    :special-members: __add__, __sub__, __getitem__

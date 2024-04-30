@@ -1,0 +1,5 @@
+# sensor: Test
+# patient: 1
+p;t_ms;Temperature
+100.5;1.5;25
+150;3;25

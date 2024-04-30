@@ -1,3 +1,18 @@
+0.0.3 (2024-04-30)
+    Features:
+
+    * ``SignalReader`` base class and ``CsvReader``.
+    * ``Signal.plot``: grid on by default. New parameter ``t0``.
+    * ``to_csv``: simple CSV export
+    * ``ChPoints.plot``: plot independently of the containing signal.
+    * Slicing of ``ChPoints``, shifting indices with scalar (``+, -``)
+    * ``visu.plot_signal_slices``.
+
+    Fixes:
+
+    * ``Signal.__getitem__`` can no longer produce empty slices in ``Signal.slices``.
+    * ``Signal.slices`` validation error messages now contain the ``key``.
+
 0.0.2 (2024-02-27)
     Breaking changes:
 

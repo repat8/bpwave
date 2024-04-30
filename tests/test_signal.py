@@ -180,11 +180,16 @@ def test__signal__plot(simple_signal: Signal) -> None:
         _,
         axes,
     ):
+        axes = axes.ravel()
         simple_signal.plot(axes[0], title="all on")
         simple_signal.plot(axes[1], title="onsets off", onsets=False)
         simple_signal.plot(axes[2], title="points off", points=False)
         simple_signal.plot(
-            axes[3], title="filtered points", points={"sys_peak"}, onsets=False
+            axes[3],
+            title="filtered points, t0=10",
+            points={"sys_peak"},
+            onsets=False,
+            t0=10,
         )
     plt.show()
 
@@ -207,3 +212,11 @@ def test__signal__hdf__t_from_fs_has_segmentation(
     assert s_loaded.marks == simple_signal.marks
     assert s_loaded.slices == simple_signal.slices
     assert s_loaded.meta == simple_signal.meta
+
+
+def test__signal__repr(simple_signal: Signal) -> None:
+    assert repr(simple_signal) == "<Signal of 9 values>"
+
+
+def test__signal__str(simple_signal: Signal) -> None:
+    assert str(simple_signal) == "<Signal of 9 values>"
