@@ -1,9 +1,13 @@
 """Visualization utils."""
 import contextlib
+import typing as _t
 from collections.abc import Generator
 
 import matplotlib.pyplot as _plt
 import numpy as _np
+
+if _t.TYPE_CHECKING:
+    from .signal import Signal
 
 
 def plot_signal(
@@ -34,6 +38,41 @@ def plot_signal(
             ylabel=f"$y$ [{y_unit}]",
             xlim=(t.min(), t.max()),
         )
+
+
+def plot_signal_slices(
+    signal: "Signal", /, **subplots_kw
+) -> tuple[_plt.Axes, _plt.Axes]:
+    """Visualizes :attr:`bpwave.Signal.slices`.
+
+    :param signal: the signal object with :attr:`slices` filled.
+    :param subplots_kw: keyword args to be passed for the two subplots.
+    :return: (signal subplot, slices subplot)
+    """
+    fig, (ax_sig, ax_slc) = _plt.subplots(
+        nrows=2,
+        sharex=True,
+        **(dict(figsize=(15, 6), gridspec_kw={"height_ratios": [2, 1]}) | subplots_kw),
+    )
+    signal.plot(ax=ax_sig, legend="off")
+    xlabel = ax_sig.get_xlabel()
+    ax_sig.set(xlabel=None)
+    for i, (name, slices) in enumerate(signal.slices.items()):
+        for slc in slices:
+            ax_slc.fill_between(
+                [signal.t[slc.start], signal.t[slc.stop - 1]],
+                [i - 0.4, i - 0.4],
+                [i + 0.4, i + 0.4],
+                alpha=0.5,
+            )
+    ax_slc.set(
+        yticks=range(len(signal.slices)),
+        yticklabels=signal.slices.keys(),
+        xlabel=xlabel,
+    )
+    ax_slc.grid(True)
+    fig.tight_layout()
+    return ax_sig, ax_slc
 
 
 @contextlib.contextmanager

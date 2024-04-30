@@ -6,6 +6,7 @@
     * ``to_csv``: simple CSV export
     * ``ChPoints.plot``: plot independently of the containing signal.
     * Slicing of ``ChPoints``, shifting indices with scalar (``+, -``)
+    * ``visu.plot_signal_slices``.
 
     Fixes:
 
