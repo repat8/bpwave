@@ -1,4 +1,4 @@
-0.0.3 ()
+0.0.3 (2024-04-30)
     Features:
 
     * ``SignalReader`` base class and ``CsvReader``.
